@@ -64,7 +64,7 @@ function VehicleDetail() {
             </div>
             {imgs.length > 1 && (
               <div className="mt-4 grid grid-cols-5 gap-3">
-                {imgs.map((src, i) => (
+                {imgs.map((src: string, i: number) => (
                   <button
                     key={i}
                     onClick={() => setActive(i)}
