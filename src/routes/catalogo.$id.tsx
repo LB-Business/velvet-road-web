@@ -145,7 +145,7 @@ function VehicleDetailPage() {
 
             {gallery.length > 1 && (
               <div className="mt-4 grid grid-cols-3 gap-4 sm:grid-cols-4">
-                {gallery.slice(0, 8).map((img, index) => (
+                {gallery.map((img, index) => (
                   <button
                     type="button"
                     key={`${img}-${index}`}
