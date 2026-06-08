@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Car, ShieldCheck, CalendarClock, Handshake, MessageCircle, MapPin, Play, ArrowUpRight, ExternalLink } from "lucide-react";
 import logo from "@/assets/logo.png";
-import showroom from "@/assets/showroom.jpg";
+import showroom from "../../public/showroom.jpg";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { VehicleCard } from "@/components/VehicleCard";
 import { getLatestVehicles, WHATSAPP_BASE } from "@/lib/vehicles";
+import { useCatalogData } from "@/hooks/useCatalogData";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -18,27 +19,35 @@ const BENEFITS = [
   { icon: Handshake, title: "Postventa premium", text: "Acompañamiento continuo antes, durante y después de tu compra." },
 ];
 
-const GOOGLE_MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Mariano+Castex+1987+Edificio+Vista+Golf";
+const GOOGLE_MAPS_URL = "https://www.google.com/maps/place/Sanfilippo+Exclusivos/@-34.8730257,-58.4744191,15z/data=!4m6!3m5!1s0x95bcd74793baefc7:0x6e105e51252d35fa!8m2!3d-34.8684468!4d-58.5029049!16s%2Fg%2F11vjh0ns07?entry=ttu&g_ep=EgoyMDI2MDYwMS4wIKXMDSoASAFQAw%3D%3D";
 
 function Index() {
-  const latest = getLatestVehicles(6);
+  const { data, loading } = useCatalogData();
+  const latest = getLatestVehicles(data?.vehicles ?? [], 6);
+  const whatsappHref = data?.whatsappHref ?? WHATSAPP_BASE;
+  const whatsappDisplay = data?.whatsappDisplay ?? "11 3685-5346";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* HERO */}
       <section id="inicio" className="relative h-screen min-h-[720px] w-full overflow-hidden">
-        <video
-          className="absolute inset-0 h-full w-full object-cover"
-          autoPlay
-          muted
-          loop
-          playsInline
-          poster="/hero-poster.jpg"
-        >
-          <source src="/hero.mp4" type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-background/60" />
+        <div className="absolute inset-0">
+          <video
+            className="h-full w-full object-cover brightness-110 contrast-105"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/hero-poster.jpg"
+          >
+            <source src="/hero.mp4" type="video/mp4" />
+          </video>
+        </div>
+
+        {/* overlays más suaves */}
+        <div className="absolute inset-0 bg-gradient-to-r from-background/75 via-background/45 to-background/15" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/65 via-background/20 to-background/35" />
 
         <Navbar overlay />
 
@@ -47,7 +56,8 @@ function Index() {
             <h1 className="font-display text-5xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl">
               Vehículos exclusivos.<br />Atención personalizada.
             </h1>
-            <p className="mt-8 max-w-md text-base leading-relaxed text-foreground/70">
+
+            <p className="mt-8 max-w-md text-base leading-relaxed text-foreground/75">
               Una experiencia premium para descubrir unidades seleccionadas y coordinar tu visita de forma privada.
             </p>
 
@@ -56,11 +66,12 @@ function Index() {
                 href={WHATSAPP_BASE}
                 target="_blank"
                 rel="noreferrer"
-                className="group inline-flex items-center gap-3 bg-[var(--gradient-gold)] px-7 py-4 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-foreground shadow-[var(--shadow-gold)] transition-transform hover:-translate-y-0.5"
+                className="group inline-flex items-center gap-3 border border-gold/60 bg-black/45 px-7 py-4 text-[11px] font-medium uppercase tracking-[0.22em] !text-white backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-gold/10"
               >
-                <MessageCircle className="h-4 w-4" />
-                Coordinar por WhatsApp
+                <MessageCircle className="h-4 w-4 !text-white" />
+                <span className="!text-white">Coordinar por WhatsApp</span>
               </a>
+
               <Link
                 to="/catalogo"
                 className="inline-flex items-center gap-3 border border-gold/60 px-7 py-4 text-[11px] font-medium uppercase tracking-[0.22em] text-gold transition-colors hover:bg-gold/10"
@@ -68,16 +79,6 @@ function Index() {
                 Ver catálogo
               </Link>
             </div>
-
-            <a href="#nosotros" className="group mt-16 inline-flex items-center gap-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-gold/60 text-gold transition-colors group-hover:bg-gold/10">
-                <Play className="h-4 w-4 fill-gold" />
-              </span>
-              <span>
-                <span className="block text-[11px] font-medium uppercase tracking-[0.22em] text-foreground">Ver showroom</span>
-                <span className="mt-1 block text-xs text-foreground/60">Recorré nuestra selección exclusiva.</span>
-              </span>
-            </a>
           </div>
         </div>
       </section>
@@ -98,7 +99,13 @@ function Index() {
         </div>
 
         <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {latest.map((v) => <VehicleCard key={v.id} v={v} />)}
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Cargando unidades...</p>
+          ) : latest.length > 0 ? (
+            latest.map((v) => <VehicleCard key={v.id} v={v} />)
+          ) : (
+            <p className="text-sm text-muted-foreground">Todavía no hay unidades publicadas.</p>
+          )}
         </div>
       </section>
 
@@ -148,7 +155,7 @@ function Index() {
                   </span>
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.22em] text-gold">WhatsApp</p>
-                    <p className="mt-1 text-sm text-foreground">WhatsApp: 11 3685-5346</p>
+                    <p className="mt-1 text-sm text-foreground">WhatsApp: {whatsappDisplay}</p>
                   </div>
                 </li>
                 <li id="ubicacion" className="flex items-start gap-4">
@@ -176,9 +183,10 @@ function Index() {
                   href={WHATSAPP_BASE}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-3 bg-[var(--gradient-gold)] px-6 py-3 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-foreground shadow-[var(--shadow-gold)] transition-transform hover:-translate-y-0.5"
+                  className="group inline-flex items-center gap-3 bg-gold px-7 py-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-black shadow-[var(--shadow-gold)] transition-transform hover:-translate-y-0.5 hover:bg-gold/90"
                 >
-                  <MessageCircle className="h-4 w-4" /> Enviar WhatsApp
+                  <MessageCircle className="h-4 w-4" />
+                  Coordinar por WhatsApp
                 </a>
                 <a
                   href={GOOGLE_MAPS_URL}

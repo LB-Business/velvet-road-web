@@ -1,126 +1,159 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, MessageCircle, Gauge, Fuel, Cog, Settings2, Calendar, BadgeCheck } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, MessageCircle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { getVehicleById, formatKm, formatPrice, whatsappLinkForVehicle } from "@/lib/vehicles";
+import { useCatalogData } from "@/hooks/useCatalogData";
+import { buildWhatsappHref, formatPrice } from "@/lib/vehicles";
 
 export const Route = createFileRoute("/catalogo/$id")({
-  loader: ({ params }) => {
-    const v = getVehicleById(params.id);
-    if (!v) throw notFound();
-    return v;
-  },
-  component: VehicleDetail,
-  notFoundComponent: () => (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navbar />
-      <div className="mx-auto max-w-3xl px-6 py-32 text-center">
-        <h1 className="font-display text-4xl">Vehículo no encontrado</h1>
-        <Link to="/catalogo" className="mt-8 inline-flex items-center gap-2 text-gold hover:gap-3 transition-all">
-          <ArrowLeft className="h-4 w-4" /> Volver al catálogo
-        </Link>
-      </div>
-      <Footer />
-    </div>
-  ),
-  errorComponent: ({ error }) => (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
-      <p className="text-sm text-muted-foreground">{error.message}</p>
-    </div>
-  ),
+  component: VehicleDetailPage,
 });
 
-function VehicleDetail() {
-  const v = Route.useLoaderData();
-  const [active, setActive] = useState(0);
-  const imgs = v.imagenes.length ? v.imagenes : [v.imagenPrincipal];
+function VehicleDetailPage() {
+  const { id } = Route.useParams();
+  const { data, loading, error } = useCatalogData();
 
-  const specs = [
-    { icon: Calendar, label: "Año", value: String(v.año) },
-    { icon: Gauge, label: "Kilómetros", value: formatKm(v.kilometros) },
-    { icon: Cog, label: "Motor", value: v.motor },
-    { icon: Settings2, label: "Transmisión", value: v.transmision },
-    { icon: Fuel, label: "Combustible", value: v.combustible },
-    { icon: Settings2, label: "Tracción", value: v.traccion },
-    { icon: BadgeCheck, label: "Estado", value: v.estado },
-  ];
+  const vehicle = data?.vehicles.find((v) => v.id === id || v.slug === id);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Navbar />
+        <main className="mx-auto max-w-7xl px-6 py-24 lg:px-10">
+          <p className="font-display text-3xl">Cargando vehículo...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !vehicle) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Navbar />
+        <main className="mx-auto max-w-7xl px-6 py-24 lg:px-10">
+          <Link
+            to="/catalogo"
+            className="inline-flex items-center gap-2 text-sm text-gold hover:opacity-80"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver al catálogo
+          </Link>
+
+          <div className="mt-12 border border-border/60 bg-surface p-12">
+            <p className="font-display text-3xl">Vehículo no encontrado.</p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Puede que la unidad ya no esté publicada o que el enlace sea incorrecto.
+            </p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const whatsappMessage = `Hola, quiero consultar por el vehículo ${vehicle.marca} ${vehicle.modelo} ${vehicle.version} ${vehicle.año}.`;
+  const whatsappHref = buildWhatsappHref(data?.business.contactPhone, whatsappMessage);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <section className="mx-auto max-w-7xl px-6 py-12 lg:px-10 lg:py-16">
-        <Link to="/catalogo" className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-gold hover:gap-3 transition-all">
-          <ArrowLeft className="h-4 w-4" /> Volver al catálogo
+      <main className="mx-auto max-w-7xl px-6 py-16 lg:px-10 lg:py-24">
+        <Link
+          to="/catalogo"
+          className="inline-flex items-center gap-2 text-sm text-gold transition-opacity hover:opacity-80"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver al catálogo
         </Link>
 
-        <div className="mt-10 grid gap-12 lg:grid-cols-[1.3fr_1fr]">
-          {/* Gallery */}
+        <section className="mt-10 grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <div className="relative aspect-[4/3] overflow-hidden border border-border/60 bg-surface">
-              <img src={imgs[active]} alt={`${v.marca} ${v.modelo}`} className="h-full w-full object-cover" />
-              <span className="absolute bottom-4 left-4 bg-background/80 px-3 py-1 text-[10px] tracking-[0.2em] text-gold">{v.año}</span>
+            <div className="overflow-hidden border border-border/60 bg-surface">
+              <img
+                src={vehicle.imagenPrincipal}
+                alt={vehicle.name}
+                className="h-[320px] w-full object-cover sm:h-[480px] lg:h-[560px]"
+              />
             </div>
-            {imgs.length > 1 && (
-              <div className="mt-4 grid grid-cols-5 gap-3">
-                {imgs.map((src: string, i: number) => (
-                  <button
-                    key={i}
-                    onClick={() => setActive(i)}
-                    className={`aspect-[4/3] overflow-hidden border ${i === active ? "border-gold" : "border-border/60"} transition-colors`}
+
+            {vehicle.imagenes.length > 1 && (
+              <div className="mt-4 grid grid-cols-3 gap-4 sm:grid-cols-4">
+                {vehicle.imagenes.slice(0, 8).map((img) => (
+                  <div
+                    key={img}
+                    className="overflow-hidden border border-border/60 bg-surface"
                   >
-                    <img src={src} alt="" className="h-full w-full object-cover" />
-                  </button>
+                    <img
+                      src={img}
+                      alt={vehicle.name}
+                      className="h-24 w-full object-cover"
+                    />
+                  </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Info */}
-          <div>
-            <p className="eyebrow">{v.marca}</p>
-            <h1 className="mt-3 font-display text-4xl sm:text-5xl leading-tight">
-              {v.modelo}
-            </h1>
-            <p className="mt-2 text-lg text-foreground/70">{v.version} · {v.año}</p>
+          <aside className="border border-border/60 bg-surface p-8 lg:p-10">
+            <p className="eyebrow">{vehicle.marca}</p>
 
-            <div className="mt-8 border-y border-border/60 py-6">
-              <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Precio</p>
-              <p className="mt-2 font-display text-3xl text-gold">{formatPrice(v)}</p>
+            <h1 className="mt-4 font-display text-4xl leading-tight sm:text-5xl">
+              {vehicle.modelo} {vehicle.version}
+            </h1>
+
+            <p className="mt-4 text-xl text-gold">
+              {formatPrice(vehicle)}
+            </p>
+
+            <div className="mt-8 grid gap-4 border-y border-border/60 py-8">
+              <Detail label="Año" value={vehicle.año || "Consultar"} />
+              <Detail
+                label="Kilómetros"
+                value={
+                  vehicle.kilometros
+                    ? `${vehicle.kilometros.toLocaleString("es-AR")} km`
+                    : "Consultar"
+                }
+              />
+              <Detail label="Transmisión" value={vehicle.transmision || "Consultar"} />
+              <Detail label="Combustible" value={vehicle.combustible || "Consultar"} />
+              <Detail label="Color" value={vehicle.color || "Consultar"} />
+              <Detail label="Patente" value={vehicle.patente || "Consultar"} />
             </div>
 
+            {vehicle.descripcion && (
+              <p className="mt-8 text-sm leading-relaxed text-muted-foreground">
+                {vehicle.descripcion}
+              </p>
+            )}
+
             <a
-              href={whatsappLinkForVehicle(v)}
+              href={whatsappHref}
               target="_blank"
               rel="noreferrer"
-              className="mt-8 inline-flex w-full items-center justify-center gap-3 bg-[var(--gradient-gold)] px-6 py-4 text-[11px] font-medium uppercase tracking-[0.22em] text-primary-foreground shadow-[var(--shadow-gold)] transition-transform hover:-translate-y-0.5"
+              className="mt-10 inline-flex w-full items-center justify-center gap-3 bg-gold px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-black shadow-[var(--shadow-gold)] transition-transform hover:-translate-y-0.5 hover:bg-gold/90"
             >
-              <MessageCircle className="h-4 w-4" /> Consultar por WhatsApp
+              <MessageCircle className="h-4 w-4" />
+              Consultar por WhatsApp
             </a>
-
-            <dl className="mt-10 grid grid-cols-2 gap-6">
-              {specs.map((s) => (
-                <div key={s.label} className="flex items-start gap-3">
-                  <s.icon className="mt-0.5 h-5 w-5 text-gold" strokeWidth={1.2} />
-                  <div>
-                    <dt className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{s.label}</dt>
-                    <dd className="mt-1 text-sm text-foreground">{s.value}</dd>
-                  </div>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="mt-16 border-t border-border/60 pt-12">
-          <p className="eyebrow">Descripción</p>
-          <p className="mt-4 max-w-3xl text-base leading-relaxed text-foreground/80">{v.descripcion}</p>
-        </div>
-      </section>
+          </aside>
+        </section>
+      </main>
 
       <Footer />
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex items-center justify-between gap-6">
+      <span className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+        {label}
+      </span>
+      <span className="text-sm text-foreground">{value}</span>
     </div>
   );
 }
