@@ -21,8 +21,8 @@ function VehicleDetailPage() {
 
     const images = [
       vehicle.imagenPrincipal,
-      ...vehicle.imagenes,
-    ].filter(Boolean);
+      ...(vehicle.imagenes ?? []),
+    ].filter((img): img is string => Boolean(img));
 
     return [...new Set(images)];
   }, [vehicle]);
@@ -150,11 +150,10 @@ function VehicleDetailPage() {
                     type="button"
                     key={`${img}-${index}`}
                     onClick={() => setSelectedIndex(index)}
-                    className={`overflow-hidden border bg-surface transition-all ${
-                      selectedIndex === index
+                    className={`overflow-hidden border bg-surface transition-all ${selectedIndex === index
                         ? "border-gold opacity-100"
                         : "border-border/60 opacity-60 hover:border-gold/60 hover:opacity-100"
-                    }`}
+                      }`}
                   >
                     <img
                       src={img}
